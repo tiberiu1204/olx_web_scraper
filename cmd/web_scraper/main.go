@@ -24,19 +24,19 @@ func main() {
 	c := colly.NewCollector(colly.AllowedDomains("www.olx.ro", "olx.ro"))
 	numberOfPages := getNumberOfPages(URL, c)
 	var totalPrice float64 = 0
-	var entries []Advertisement = make([]Advertisement, 0, 150)
+	entries := make(map[string]Advertisement)
 	var wg = sync.WaitGroup{}
 	var m = sync.RWMutex{}
 
 	for i := 1; i <= int(numberOfPages); i++ {
 		collector := colly.NewCollector(colly.AllowedDomains("www.olx.ro", "olx.ro"))
-		go scrapePageIndex(uint8(i), collector, &entries, &m, &wg)
+		go scrapePageIndex(uint8(i), collector, entries, &m, &wg)
 	}
 
 	wg.Wait()
 
-	for index := range entries {
-		adv := entries[index]
+	for key := range entries {
+		adv := entries[key]
 		fmt.Printf("Title: %v\nArea: %v\nPrice: %v\nLink: %v\n\n", adv.title, adv.area, adv.price, adv.href)
 		var pricePerHa float32 = float32(adv.price) / float32(float32(adv.area)/10000)
 		totalPrice += float64(pricePerHa)
@@ -79,7 +79,7 @@ func getNumberFromString(str string) (int32, error) {
 	return number, err
 }
 
-func scrapePageIndex(index uint8, c *colly.Collector, entries *[]Advertisement, m *sync.RWMutex, wg *sync.WaitGroup) {
+func scrapePageIndex(index uint8, c *colly.Collector, entries map[string]Advertisement, m *sync.RWMutex, wg *sync.WaitGroup) {
 	var pageUrl string = URL + "?page=" + strconv.Itoa(int(index))
 	c.OnHTML("div.css-1sw7q4x", func(h *colly.HTMLElement) {
 		selection := h.DOM
@@ -88,9 +88,10 @@ func scrapePageIndex(index uint8, c *colly.Collector, entries *[]Advertisement, 
 		price, priceErr := getNumberFromString(selection.Find("p.css-10b0gli.er34gjf0").Text())
 		href := h.ChildAttr("a", "href")
 		var pricePerHa float32 = float32(price) / float32(area/10000)
-		if (areaErr == nil && priceErr == nil) && (area >= 5000) && (pricePerHa >= 15000 && pricePerHa <= 5*15000) {
+		if (areaErr == nil && priceErr == nil) && (area >= 5000) && (pricePerHa >= 15000 && pricePerHa <= 5*20000) {
+			adv := Advertisement{title: title, area: uint32(area), price: uint32(price), href: href}
 			m.Lock()
-			*entries = append(*entries, Advertisement{title: title, area: uint32(area), price: uint32(price), href: href})
+			entries[href] = adv
 			m.Unlock()
 		}
 	})
