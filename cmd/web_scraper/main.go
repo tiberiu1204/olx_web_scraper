@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"sync"
 
 	"github.com/gocolly/colly"
 )
@@ -19,25 +20,30 @@ type Advertisement struct {
 }
 
 func main() {
-	c := colly.NewCollector(colly.AllowedDomains("www.olx.ro", "olx.ro"))
 	// var numberOfPages uint8 = getNumberOfPages(URL, c)
-
+	c := colly.NewCollector(colly.AllowedDomains("www.olx.ro", "olx.ro"))
 	numberOfPages := getNumberOfPages(URL, c)
-	numberOfEntries := 0
 	var totalPrice float64 = 0
+	var entries []Advertisement = make([]Advertisement, 0, 150)
+	var wg = sync.WaitGroup{}
+	var m = sync.RWMutex{}
 
 	for i := 1; i <= int(numberOfPages); i++ {
-		advertisements := scrapePageIndex(uint8(i), c)
-		for index := range advertisements {
-			adv := advertisements[index]
-			fmt.Printf("Title: %v\nArea: %v\nPrice: %v\nLink: %v\n\n", adv.title, adv.area, adv.price, adv.href)
-			var pricePerHa float32 = float32(adv.price) / float32(float32(adv.area)/10000)
-			totalPrice += float64(pricePerHa)
-		}
-		numberOfEntries += len(advertisements)
+		collector := colly.NewCollector(colly.AllowedDomains("www.olx.ro", "olx.ro"))
+		go scrapePageIndex(uint8(i), collector, &entries, &m, &wg)
 	}
-	fmt.Printf("Found %v entries.\n", numberOfEntries)
-	fmt.Printf("Average price: %v lei / ha.", toFixed(totalPrice/float64(numberOfEntries), 2))
+
+	wg.Wait()
+
+	for index := range entries {
+		adv := entries[index]
+		fmt.Printf("Title: %v\nArea: %v\nPrice: %v\nLink: %v\n\n", adv.title, adv.area, adv.price, adv.href)
+		var pricePerHa float32 = float32(adv.price) / float32(float32(adv.area)/10000)
+		totalPrice += float64(pricePerHa)
+	}
+
+	fmt.Printf("Found %v entries.\n", len(entries))
+	fmt.Printf("Average price: %v lei / ha.", toFixed(totalPrice/float64(len(entries)), 2))
 }
 
 func getNumberOfPages(url string, c *colly.Collector) uint8 {
@@ -73,11 +79,8 @@ func getNumberFromString(str string) (int32, error) {
 	return number, err
 }
 
-func scrapePageIndex(index uint8, c *colly.Collector) []Advertisement {
-	var advertisements []Advertisement = make([]Advertisement, 0, 10)
-
+func scrapePageIndex(index uint8, c *colly.Collector, entries *[]Advertisement, m *sync.RWMutex, wg *sync.WaitGroup) {
 	var pageUrl string = URL + "?page=" + strconv.Itoa(int(index))
-
 	c.OnHTML("div.css-1sw7q4x", func(h *colly.HTMLElement) {
 		selection := h.DOM
 		title := selection.Find("h6").Text()
@@ -85,19 +88,19 @@ func scrapePageIndex(index uint8, c *colly.Collector) []Advertisement {
 		price, priceErr := getNumberFromString(selection.Find("p.css-10b0gli.er34gjf0").Text())
 		href := h.ChildAttr("a", "href")
 		var pricePerHa float32 = float32(price) / float32(area/10000)
-
 		if (areaErr == nil && priceErr == nil) && (area >= 5000) && (pricePerHa >= 15000 && pricePerHa <= 5*15000) {
-			advertisements = append(advertisements, Advertisement{title: title, area: uint32(area), price: uint32(price), href: href})
+			m.Lock()
+			*entries = append(*entries, Advertisement{title: title, area: uint32(area), price: uint32(price), href: href})
+			m.Unlock()
 		}
 	})
 
 	c.OnError(func(r *colly.Response, err error) {
 		fmt.Printf("Erorr while scraping: %v\n", err.Error())
 	})
-
+	wg.Add(1)
 	c.Visit(pageUrl)
-
-	return advertisements
+	wg.Done()
 }
 
 func toFixed(num float64, precision int) float64 {
