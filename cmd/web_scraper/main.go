@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/gocolly/colly"
 	"github.com/tiberiu1204/olx_web_scraper/internal/scraper"
@@ -10,7 +11,8 @@ import (
 )
 
 func main() {
-	// var numberOfPages uint8 = getNumberOfPages(URL, c)
+	t0 := time.Now()
+
 	c := colly.NewCollector(colly.AllowedDomains("www.olx.ro", "olx.ro"))
 	numberOfPages := scraper.GetNumberOfPages(scraper.URL, c)
 	var totalPrice float64 = 0
@@ -31,7 +33,6 @@ func main() {
 		var pricePerHa float32 = float32(adv.Price) / float32(float32(adv.Area)/10000)
 		totalPrice += float64(pricePerHa)
 	}
-
-	fmt.Printf("Found %v entries.\n", len(entries))
+	fmt.Printf("Found %v entries in %v\n", len(entries), time.Since(t0))
 	fmt.Printf("Average price: %v lei / ha.", utils.ToFixed(totalPrice/float64(len(entries)), 2))
 }

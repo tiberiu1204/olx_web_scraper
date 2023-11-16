@@ -44,6 +44,11 @@ func ScrapePageIndex(index uint8, c *colly.Collector, entries map[string]Adverti
 		price, priceErr := utils.GetNumberFromString(selection.Find("p.css-10b0gli.er34gjf0").Text())
 		href := h.ChildAttr("a", "href")
 		var pricePerHa float32 = float32(price) / float32(area/10000)
+
+		if len(href) > 0 && href[0] != 'h' {
+			href = "https://www.olx.ro" + href
+		}
+
 		if (areaErr == nil && priceErr == nil) && (area >= 5000) && (pricePerHa >= 15000 && pricePerHa <= 5*20000) {
 			adv := Advertisement{Title: title, Area: uint32(area), Price: uint32(price), Href: href}
 			m.Lock()
