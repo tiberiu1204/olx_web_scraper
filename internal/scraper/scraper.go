@@ -15,7 +15,12 @@ type Advertisement struct {
 	Title string
 	Area  uint32
 	Price uint32
+	PPH   float64
 	Href  string
+}
+
+func (adv Advertisement) Print() {
+	fmt.Printf("Title: %v\nArea: %v\nPrice: %v\nPrice / ha: %v lei / ha\nLink: %v\n\n", adv.Title, adv.Area, adv.Price, adv.PPH, adv.Href)
 }
 
 func GetNumberOfPages(url string, c *colly.Collector) uint8 {
@@ -43,14 +48,14 @@ func ScrapePageIndex(index uint8, c *colly.Collector, entries map[string]Adverti
 		area, areaErr := utils.GetNumberFromString(selection.Find("span.css-643j0o").Text())
 		price, priceErr := utils.GetNumberFromString(selection.Find("p.css-10b0gli.er34gjf0").Text())
 		href := h.ChildAttr("a", "href")
-		var pricePerHa float32 = float32(price) / float32(area/10000)
+		pricePerHa := utils.PricePerHa(uint32(price), uint32(area))
 
 		if len(href) > 0 && href[0] != 'h' {
 			href = "https://www.olx.ro" + href
 		}
 
 		if (areaErr == nil && priceErr == nil) && (area >= 5000) && (pricePerHa >= 15000 && pricePerHa <= 5*20000) {
-			adv := Advertisement{Title: title, Area: uint32(area), Price: uint32(price), Href: href}
+			adv := Advertisement{Title: title, Area: uint32(area), Price: uint32(price), PPH: pricePerHa, Href: href}
 			m.Lock()
 			entries[href] = adv
 			m.Unlock()

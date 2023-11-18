@@ -27,12 +27,24 @@ func main() {
 
 	wg.Wait()
 
+	minAdv, maxAdv := scraper.Advertisement{}, scraper.Advertisement{}
+
 	for key := range entries {
 		adv := entries[key]
-		fmt.Printf("Title: %v\nArea: %v\nPrice: %v\nLink: %v\n\n", adv.Title, adv.Area, adv.Price, adv.Href)
-		var pricePerHa float32 = float32(adv.Price) / float32(float32(adv.Area)/10000)
-		totalPrice += float64(pricePerHa)
+		adv.Print()
+		totalPrice += adv.PPH
+
+		if minAdv.PPH > adv.PPH || minAdv.PPH == 0 {
+			minAdv = adv
+		}
+		if maxAdv.PPH < adv.PPH {
+			maxAdv = adv
+		}
 	}
 	fmt.Printf("Found %v entries in %v\n", len(entries), time.Since(t0))
-	fmt.Printf("Average price: %v lei / ha.", utils.ToFixed(totalPrice/float64(len(entries)), 2))
+	fmt.Printf("Average price: %v lei / ha.\n", utils.ToFixed(totalPrice/float64(len(entries)), 2))
+	fmt.Println("\nMinimum price / ha advert: ")
+	minAdv.Print()
+	fmt.Println("\nMaximum price / ha advert: ")
+	maxAdv.Print()
 }

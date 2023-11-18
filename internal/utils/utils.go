@@ -26,6 +26,14 @@ func GetNumberFromString(str string) (int32, error) {
 	return number, err
 }
 
+func MetersToHa(num uint32) float64 {
+	return float64(num / 10000)
+}
+
+func PricePerHa(price uint32, area uint32) float64 {
+	return ToFixed(float64(price)/float64(MetersToHa(area)), 2)
+}
+
 func round(num float64) int {
 	return int(num + math.Copysign(0.5, num))
 }
