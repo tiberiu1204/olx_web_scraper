@@ -11,19 +11,26 @@ import (
 	"github.com/tiberiu1204/olx_web_scraper/internal/utils"
 )
 
+// This structure holds all the relevant information that will be scraped from each entry
+
 type Advertisement struct {
-	Title string
-	Area  uint32
-	Price uint32
-	PPH   float64
-	Href  string
+	Title string  // The title of the advert
+	Area  uint32  // The area of the land advertised, in m^2
+	Price uint32  // The price of the advertised land, in RON
+	PPH   float64 // The RON per ha of the advertised land
+	Href  string  // The link the advert points to
 }
+
+// This function prints an Advertisement struct object
 
 func (adv Advertisement) Print() {
 	fmt.Printf("Title: %v\nArea: %v\nPrice: %v\nPrice / ha: %v lei / ha\nLink: %v\n\n", adv.Title, adv.Area, adv.Price, adv.PPH, adv.Href)
 }
 
-func GetNumberOfPages(url string, c *colly.Collector) uint8 {
+// This function takes in a query url and a colly.Collector ponter
+// and returns the number of pages the query contains
+
+func getNumberOfPages(url string, c *colly.Collector) uint8 {
 	var numberOfPages uint8 = 0
 	c.OnHTML("li.pagination-item a.css-1mi714g", func(h *colly.HTMLElement) {
 		number, err := strconv.Atoi(h.Text)
@@ -40,7 +47,11 @@ func GetNumberOfPages(url string, c *colly.Collector) uint8 {
 	return numberOfPages
 }
 
-func ScrapePageIndex(url string, index uint8, c *colly.Collector, entries map[string]Advertisement, m *sync.RWMutex, wg *sync.WaitGroup) {
+// This function takes in a query url, the index of the page, a colly.Collector pointer, a map representing scraped entries,
+// a RWMutex pointer and a WaitGroup pointer. The function will store scraped Advertisements in the entries map,
+// where the keys represent the links asociated with the Advertisement struct value
+
+func scrapePageIndex(url string, index uint8, c *colly.Collector, entries map[string]Advertisement, m *sync.RWMutex, wg *sync.WaitGroup) {
 	var pageUrl string = url + "?page=" + strconv.Itoa(int(index))
 	c.OnHTML("div.css-1sw7q4x", func(h *colly.HTMLElement) {
 		selection := h.DOM
@@ -78,14 +89,14 @@ func ScrapeOlxQuery(query string, entries map[string]Advertisement, m *sync.RWMu
 	t0 := time.Now()
 	url := "https://www.olx.ro/oferte/q-" + strings.Join(strings.Split(query, " "), "-")
 	c := colly.NewCollector(colly.AllowedDomains("www.olx.ro", "olx.ro"))
-	numberOfPages := GetNumberOfPages(url, c)
+	numberOfPages := getNumberOfPages(url, c)
 	wg := sync.WaitGroup{}
 
 	fmt.Printf("Scraping %v ...\n", url)
 
 	for i := 1; i <= int(numberOfPages); i++ {
 		collector := colly.NewCollector(colly.AllowedDomains("www.olx.ro", "olx.ro"))
-		go ScrapePageIndex(url, uint8(i), collector, entries, m, &wg)
+		go scrapePageIndex(url, uint8(i), collector, entries, m, &wg)
 	}
 
 	wg.Wait()
@@ -97,6 +108,10 @@ func ScrapeOlxQuery(query string, entries map[string]Advertisement, m *sync.RWMu
 
 	wg1.Done()
 }
+
+// This function takes an array of quries, where each query is a string of words separated by a space ' ',
+// a representing the scraped entries, where the key is a string representing a link and the value is
+// its corresponding Advertisement struct
 
 func ScrapeMultipleOlxQueries(quries []string, entries map[string]Advertisement) {
 	t0 := time.Now()
