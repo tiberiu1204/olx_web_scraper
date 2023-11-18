@@ -3,13 +3,13 @@ package scraper
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/gocolly/colly"
 	"github.com/tiberiu1204/olx_web_scraper/internal/utils"
 )
-
-const URL string = "https://www.olx.ro/oferte/q-teren-agricol/"
 
 type Advertisement struct {
 	Title string
@@ -40,8 +40,8 @@ func GetNumberOfPages(url string, c *colly.Collector) uint8 {
 	return numberOfPages
 }
 
-func ScrapePageIndex(index uint8, c *colly.Collector, entries map[string]Advertisement, m *sync.RWMutex, wg *sync.WaitGroup) {
-	var pageUrl string = URL + "?page=" + strconv.Itoa(int(index))
+func ScrapePageIndex(url string, index uint8, c *colly.Collector, entries map[string]Advertisement, m *sync.RWMutex, wg *sync.WaitGroup) {
+	var pageUrl string = url + "?page=" + strconv.Itoa(int(index))
 	c.OnHTML("div.css-1sw7q4x", func(h *colly.HTMLElement) {
 		selection := h.DOM
 		title := selection.Find("h6").Text()
@@ -69,3 +69,56 @@ func ScrapePageIndex(index uint8, c *colly.Collector, entries map[string]Adverti
 	c.Visit(pageUrl)
 	wg.Done()
 }
+
+// This function takes a query where each word is separated by a space ' '
+// and a map where scraped entries related to land from the website olx.ro should be saved
+// where the keys represent a link and the values represent an Advertisement struct
+
+func ScrapeOlxQuery(query string, entries map[string]Advertisement) {
+	t0 := time.Now()
+	url := "https://www.olx.ro/oferte/q-" + strings.Join(strings.Split(query, " "), "-")
+	c := colly.NewCollector(colly.AllowedDomains("www.olx.ro", "olx.ro"))
+	numberOfPages := GetNumberOfPages(url, c)
+	var totalPrice float64 = 0
+	var wg = sync.WaitGroup{}
+	var m = sync.RWMutex{}
+
+	for i := 1; i <= int(numberOfPages); i++ {
+		collector := colly.NewCollector(colly.AllowedDomains("www.olx.ro", "olx.ro"))
+		go ScrapePageIndex(url, uint8(i), collector, entries, &m, &wg)
+	}
+
+	wg.Wait()
+
+	minAdv, maxAdv := Advertisement{}, Advertisement{}
+
+	for key := range entries {
+		adv := entries[key]
+		adv.Print()
+		totalPrice += adv.PPH
+
+		if minAdv.PPH > adv.PPH || minAdv.PPH == 0 {
+			minAdv = adv
+		}
+		if maxAdv.PPH < adv.PPH {
+			maxAdv = adv
+		}
+	}
+	fmt.Printf("Finished scraping url %v\n", url)
+	fmt.Printf("Found %v entries in %v\n", len(entries), time.Since(t0))
+	fmt.Printf("Average price: %v lei / ha.\n", utils.ToFixed(totalPrice/float64(len(entries)), 2))
+	fmt.Println("\nMinimum price / ha advert: ")
+	minAdv.Print()
+	fmt.Println("\nMaximum price / ha advert: ")
+	maxAdv.Print()
+}
+
+// func ScrapeMultipleOlxQueries(quries []string, entries map[string]Advertisement) {
+// 	t0 := time.Now()
+// 	m := sync.RWMutex{}
+// 	wg := sync.WaitGroup{}
+
+// 	for _, query := range quries {
+
+// 	}
+// }

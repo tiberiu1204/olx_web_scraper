@@ -2,49 +2,14 @@ package main
 
 import (
 	"fmt"
-	"sync"
-	"time"
 
-	"github.com/gocolly/colly"
 	"github.com/tiberiu1204/olx_web_scraper/internal/scraper"
-	"github.com/tiberiu1204/olx_web_scraper/internal/utils"
 )
 
 func main() {
-	t0 := time.Now()
-
-	c := colly.NewCollector(colly.AllowedDomains("www.olx.ro", "olx.ro"))
-	numberOfPages := scraper.GetNumberOfPages(scraper.URL, c)
-	var totalPrice float64 = 0
-	entries := make(map[string]scraper.Advertisement)
-	var wg = sync.WaitGroup{}
-	var m = sync.RWMutex{}
-
-	for i := 1; i <= int(numberOfPages); i++ {
-		collector := colly.NewCollector(colly.AllowedDomains("www.olx.ro", "olx.ro"))
-		go scraper.ScrapePageIndex(uint8(i), collector, entries, &m, &wg)
-	}
-
-	wg.Wait()
-
-	minAdv, maxAdv := scraper.Advertisement{}, scraper.Advertisement{}
-
-	for key := range entries {
-		adv := entries[key]
-		adv.Print()
-		totalPrice += adv.PPH
-
-		if minAdv.PPH > adv.PPH || minAdv.PPH == 0 {
-			minAdv = adv
-		}
-		if maxAdv.PPH < adv.PPH {
-			maxAdv = adv
-		}
-	}
-	fmt.Printf("Found %v entries in %v\n", len(entries), time.Since(t0))
-	fmt.Printf("Average price: %v lei / ha.\n", utils.ToFixed(totalPrice/float64(len(entries)), 2))
-	fmt.Println("\nMinimum price / ha advert: ")
-	minAdv.Print()
-	fmt.Println("\nMaximum price / ha advert: ")
-	maxAdv.Print()
+	entries := map[string]scraper.Advertisement{}
+	scraper.ScrapeOlxQuery("teren agricol", entries)
+	scraper.ScrapeOlxQuery("teren arabil", entries)
+	scraper.ScrapeOlxQuery("teren cultivabil", entries)
+	fmt.Println(len(entries))
 }
