@@ -14,11 +14,11 @@ import (
 // This structure holds all the relevant information that will be scraped from each entry
 
 type Advertisement struct {
-	Title string  // The title of the advert
-	Area  uint32  // The area of the land advertised, in m^2
-	Price uint32  // The price of the advertised land, in RON
-	PPH   float64 // The RON per ha of the advertised land
-	Href  string  // The link the advert points to
+	Title string  `json:"title"`            // The title of the advert
+	Area  uint32  `json:"area"`             // The area of the land advertised, in m^2
+	Price uint32  `json:"price"`            // The price of the advertised land, in RON
+	PPH   float64 `json:"price_per_hectar"` // The RON per ha of the advertised land
+	Href  string  `json:"href"`             // The link the advert points to
 }
 
 // This function prints an Advertisement struct object
@@ -65,7 +65,7 @@ func scrapePageIndex(url string, index uint8, c *colly.Collector, entries map[st
 			href = "https://www.olx.ro" + href
 		}
 
-		if (areaErr == nil && priceErr == nil) && (area >= 5000) && (pricePerHa >= 15000 && pricePerHa <= 5*20000) {
+		if areaErr == nil && priceErr == nil {
 			adv := Advertisement{Title: title, Area: uint32(area), Price: uint32(price), PPH: pricePerHa, Href: href}
 			m.Lock()
 			entries[href] = adv
