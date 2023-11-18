@@ -74,51 +74,42 @@ func ScrapePageIndex(url string, index uint8, c *colly.Collector, entries map[st
 // and a map where scraped entries related to land from the website olx.ro should be saved
 // where the keys represent a link and the values represent an Advertisement struct
 
-func ScrapeOlxQuery(query string, entries map[string]Advertisement) {
+func ScrapeOlxQuery(query string, entries map[string]Advertisement, m *sync.RWMutex, wg1 *sync.WaitGroup) {
 	t0 := time.Now()
 	url := "https://www.olx.ro/oferte/q-" + strings.Join(strings.Split(query, " "), "-")
 	c := colly.NewCollector(colly.AllowedDomains("www.olx.ro", "olx.ro"))
 	numberOfPages := GetNumberOfPages(url, c)
-	var totalPrice float64 = 0
-	var wg = sync.WaitGroup{}
-	var m = sync.RWMutex{}
+	wg := sync.WaitGroup{}
+
+	fmt.Printf("Scraping %v ...\n", url)
 
 	for i := 1; i <= int(numberOfPages); i++ {
 		collector := colly.NewCollector(colly.AllowedDomains("www.olx.ro", "olx.ro"))
-		go ScrapePageIndex(url, uint8(i), collector, entries, &m, &wg)
+		go ScrapePageIndex(url, uint8(i), collector, entries, m, &wg)
 	}
 
 	wg.Wait()
 
-	minAdv, maxAdv := Advertisement{}, Advertisement{}
+	m.Lock()
+	fmt.Printf("\nFinished scraping url %v\n", url)
+	fmt.Printf("Time elapsed: %v\n", time.Since(t0))
+	m.Unlock()
 
-	for key := range entries {
-		adv := entries[key]
-		adv.Print()
-		totalPrice += adv.PPH
-
-		if minAdv.PPH > adv.PPH || minAdv.PPH == 0 {
-			minAdv = adv
-		}
-		if maxAdv.PPH < adv.PPH {
-			maxAdv = adv
-		}
-	}
-	fmt.Printf("Finished scraping url %v\n", url)
-	fmt.Printf("Found %v entries in %v\n", len(entries), time.Since(t0))
-	fmt.Printf("Average price: %v lei / ha.\n", utils.ToFixed(totalPrice/float64(len(entries)), 2))
-	fmt.Println("\nMinimum price / ha advert: ")
-	minAdv.Print()
-	fmt.Println("\nMaximum price / ha advert: ")
-	maxAdv.Print()
+	wg1.Done()
 }
 
-// func ScrapeMultipleOlxQueries(quries []string, entries map[string]Advertisement) {
-// 	t0 := time.Now()
-// 	m := sync.RWMutex{}
-// 	wg := sync.WaitGroup{}
+func ScrapeMultipleOlxQueries(quries []string, entries map[string]Advertisement) {
+	t0 := time.Now()
+	m := sync.RWMutex{}
+	wg := sync.WaitGroup{}
 
-// 	for _, query := range quries {
+	for _, query := range quries {
+		wg.Add(1)
+		go ScrapeOlxQuery(query, entries, &m, &wg)
+	}
 
-// 	}
-// }
+	wg.Wait()
+
+	fmt.Printf("\nFinished scraping all %v queries\n", len(quries))
+	fmt.Printf("Found %v entries in %v", len(entries), time.Since(t0))
+}

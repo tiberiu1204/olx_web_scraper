@@ -8,8 +8,7 @@ import (
 
 func main() {
 	entries := map[string]scraper.Advertisement{}
-	scraper.ScrapeOlxQuery("teren agricol", entries)
-	scraper.ScrapeOlxQuery("teren arabil", entries)
-	scraper.ScrapeOlxQuery("teren cultivabil", entries)
-	fmt.Println(len(entries))
+	queries := []string{"teren agricol", "teren arabil", "teren cultivabil"}
+	scraper.ScrapeMultipleOlxQueries(queries, entries)
+	fmt.Printf("\n%v", len(entries))
 }
