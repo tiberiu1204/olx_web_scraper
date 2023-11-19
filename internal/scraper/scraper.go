@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gocolly/colly"
+	log "github.com/sirupsen/logrus"
 	"github.com/tiberiu1204/olx_web_scraper/internal/utils"
 )
 
@@ -30,7 +31,7 @@ func (adv Advertisement) Print() {
 // This function takes in a query url and a colly.Collector ponter
 // and returns the number of pages the query contains
 
-func getNumberOfPages(url string, c *colly.Collector) uint8 {
+func getNumberOfPages(url string, c *colly.Collector) (uint8, error) {
 	var numberOfPages uint8 = 0
 	c.OnHTML("li.pagination-item a.css-1mi714g", func(h *colly.HTMLElement) {
 		number, err := strconv.Atoi(h.Text)
@@ -43,8 +44,8 @@ func getNumberOfPages(url string, c *colly.Collector) uint8 {
 		fmt.Printf("Erorr while scraping: %v\n", err.Error())
 	})
 
-	c.Visit(url)
-	return numberOfPages
+	err := c.Visit(url)
+	return numberOfPages, err
 }
 
 // This function takes in a query url, the index of the page, a colly.Collector pointer, a map representing scraped entries,
@@ -77,8 +78,11 @@ func scrapePageIndex(url string, index uint8, c *colly.Collector, entries map[st
 		fmt.Printf("Erorr while scraping: %v\n", err.Error())
 	})
 	wg.Add(1)
-	c.Visit(pageUrl)
+	err := c.Visit(pageUrl)
 	wg.Done()
+	if err != nil {
+		log.Error(err)
+	}
 }
 
 // This function takes a query where each word is separated by a space ' '
@@ -89,8 +93,13 @@ func ScrapeOlxQuery(query string, entries map[string]Advertisement, m *sync.RWMu
 	t0 := time.Now()
 	url := "https://www.olx.ro/oferte/q-" + strings.Join(strings.Split(query, " "), "-")
 	c := colly.NewCollector(colly.AllowedDomains("www.olx.ro", "olx.ro"))
-	numberOfPages := getNumberOfPages(url, c)
+	numberOfPages, err := getNumberOfPages(url, c)
 	wg := sync.WaitGroup{}
+
+	if err != nil {
+		log.Error(err)
+		return
+	}
 
 	fmt.Printf("Scraping %v ...\n", url)
 
@@ -109,22 +118,22 @@ func ScrapeOlxQuery(query string, entries map[string]Advertisement, m *sync.RWMu
 	wg1.Done()
 }
 
-// This function takes an array of quries, where each query is a string of words separated by a space ' ',
+// This function takes an array of queries, where each query is a string of words separated by a space ' ',
 // a representing the scraped entries, where the key is a string representing a link and the value is
 // its corresponding Advertisement struct
 
-func ScrapeMultipleOlxQueries(quries []string, entries map[string]Advertisement) {
+func ScrapeMultipleOlxQueries(queries []string, entries map[string]Advertisement) {
 	t0 := time.Now()
 	m := sync.RWMutex{}
 	wg := sync.WaitGroup{}
 
-	for _, query := range quries {
+	for _, query := range queries {
 		wg.Add(1)
 		go ScrapeOlxQuery(query, entries, &m, &wg)
 	}
 
 	wg.Wait()
 
-	fmt.Printf("\nFinished scraping all %v queries\n", len(quries))
+	fmt.Printf("\nFinished scraping all %v queries\n", len(queries))
 	fmt.Printf("Found %v entries in %v", len(entries), time.Since(t0))
 }
