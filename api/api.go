@@ -22,19 +22,26 @@ type ScrapeQueryFilters struct {
 
 type ScrapeQueryParams struct {
 	Username []string // The username of the caller
-
 }
+
+// This structure holds the body of the Scrape Query
 
 type ScrapeQueryBody struct {
 	Queries []string           // The array of search queries that should be scraped
 	Filters ScrapeQueryFilters // The filters applied to the search query
+
 }
 
 // This structure holds the query response
 
 type ScrapeQueriesResponse struct {
-	Code    int                     // Success Code, 200
-	Entries []scraper.Advertisement // Scraped advertisements
+	Code         int                     // Success Code, 200
+	MinPPHEntry  scraper.Advertisement   // Entry with minimum PPH
+	MaxPPHEntry  scraper.Advertisement   // Entry with maximum PPH
+	EntriesCount uint32                  // Number of Entries contained in the response
+	AveragePPH   float64                 // Average PPH
+	MedianPPH    float64                 // Median PPH
+	Entries      []scraper.Advertisement // Scraped advertisements
 }
 
 // This structure hold request error information
