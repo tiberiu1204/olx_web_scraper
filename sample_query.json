@@ -1,0 +1,19 @@
+
+{
+    "queries": [
+        "teren agricol",
+        "teren arabil",
+        "teren cultivabil",
+        "teren pentru agricultura",
+        "teren ideal cultivarii",
+        "agricol",
+        "agricultura",
+        "investitie agricola",
+        "investitie teren agricol"
+    ],
+    "filters": {
+        "minarea": 5000,
+        "minpph": 15000,
+        "maxpph": 100000
+    }
+}
