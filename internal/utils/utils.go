@@ -36,7 +36,7 @@ func GetNumberFromString(str string) (int32, error) {
 // to a float64 value representing the hectars
 
 func MetersToHa(num uint32) float64 {
-	return float64(num / 10000)
+	return float64(float64(num) / 10000)
 }
 
 // This function takes in a price var of type uin32 representing a monetary value
