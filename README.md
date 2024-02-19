@@ -1,4 +1,4 @@
-# Olx web scraper API for finding arable land for sale
+# Olx web scraper API for finding arable land for sale on olx.ro
 ### Description
 This is a project made for personal use, out of curiosity and interest in the arable land market. The API has multiple filters, and can calculate multiple useful data and relay them to the user, like average and median price points, minimum and maximum price per hectar (RON/ha) offer.
 ### Usage
